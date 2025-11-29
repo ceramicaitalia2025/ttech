@@ -4,17 +4,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalCourseName = document.getElementById('modalCourseName');
     const closeModalBtn = document.querySelector('.close-modal');
     const enrollForm = document.getElementById('enrollForm');
-    const enrollButtons = document.querySelectorAll('.btn-enroll');
+    const enrollButtons = document.querySelectorAll('.btn-enroll, .open-modal-btn');
 
     // Open Modal
     enrollButtons.forEach(button => {
-        button.addEventListener('click', function () {
+        button.addEventListener('click', function (e) {
+            e.preventDefault();
             const courseName = this.getAttribute('data-course');
-            modalCourseName.textContent = courseName;
-
-            // Auto-select the course in the dropdown
             const courseSelect = document.getElementById('courseSelect');
-            courseSelect.value = courseName;
+
+            if (courseName) {
+                modalCourseName.textContent = courseName;
+                courseSelect.value = courseName;
+            } else {
+                modalCourseName.textContent = "nuestros cursos";
+                courseSelect.value = "";
+            }
 
             modal.style.display = 'flex';
         });
@@ -36,20 +41,43 @@ document.addEventListener('DOMContentLoaded', function () {
     enrollForm.addEventListener('submit', function (e) {
         e.preventDefault();
 
-        // Get form values
-        const name = document.getElementById('name').value;
-        const email = document.getElementById('email').value;
-        const phone = document.getElementById('phone').value;
-        const age = document.getElementById('age').value;
-        const course = document.getElementById('courseSelect').value;
+        const form = e.target;
+        const data = new FormData(form);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.textContent;
 
-        // Simulate API call/processing
-        console.log('Inscripción:', { name, email, phone, age, course });
-        alert(`¡Gracias ${name}! Tu inscripción al curso de ${course} ha sido recibida exitosamente. Nos pondremos en contacto contigo pronto.`);
+        // Show loading state
+        submitBtn.textContent = 'Enviando...';
+        submitBtn.disabled = true;
 
-        // Reset and close
-        enrollForm.reset();
-        modal.style.display = 'none';
+        fetch(form.action, {
+            method: form.method,
+            body: data,
+            headers: {
+                'Accept': 'application/json'
+            }
+        }).then(response => {
+            if (response.ok) {
+                const name = document.getElementById('name').value;
+                const course = document.getElementById('courseSelect').value;
+                alert(`¡Gracias ${name}! Tu inscripción al curso de ${course} ha sido recibida exitosamente. Nos pondremos en contacto contigo pronto.`);
+                form.reset();
+                modal.style.display = 'none';
+            } else {
+                response.json().then(data => {
+                    if (Object.hasOwn(data, 'errors')) {
+                        alert(data["errors"].map(error => error["message"]).join(", "));
+                    } else {
+                        alert("Oops! Ocurrió un problema al enviar tu inscripción.");
+                    }
+                });
+            }
+        }).catch(error => {
+            alert("Oops! Ocurrió un problema al enviar tu inscripción.");
+        }).finally(() => {
+            submitBtn.textContent = originalBtnText;
+            submitBtn.disabled = false;
+        });
     });
 
     // Mobile Menu Toggle
